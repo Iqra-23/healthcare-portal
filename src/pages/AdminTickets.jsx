@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Eye, CheckCircle2, Trash2, Search, X } from "lucide-react";
+import { Eye, CheckCircle2, Trash2, Search, X, Send } from "lucide-react";
 
 const API = "http://localhost:5000/api";
 
@@ -16,15 +16,19 @@ function AdminTickets() {
   const [focus, setFocus] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // new state for reply modal
+  const [replying, setReplying] = useState(null);
+  const [replyText, setReplyText] = useState("");
+
   const load = async () => {
     try {
       setLoading(true);
       const res = await fetch(`${API}/support`, { headers });
       const data = await res.json();
-      console.log('Tickets loaded:', data);
+      console.log("Tickets loaded:", data);
       setList(Array.isArray(data) ? data : []);
     } catch (error) {
-      console.error('Error loading tickets:', error);
+      console.error("Error loading tickets:", error);
       setList([]);
     } finally {
       setLoading(false);
@@ -42,20 +46,21 @@ function AdminTickets() {
   );
 
   const resolve = async (id) => {
-    const customMessage = prompt("Reply message to user (required):");
-    if (!customMessage) return;
+    if (!replyText.trim()) return alert("Please enter a reply message.");
     try {
       await fetch(`${API}/support/${id}`, {
         method: "PUT",
         headers,
-        body: JSON.stringify({ customMessage }),
+        body: JSON.stringify({ customMessage: replyText }),
       });
-      setMessage("Ticket resolved and email sent.");
+      setMessage("✅ Ticket resolved and reply sent successfully.");
+      setReplying(null);
+      setReplyText("");
       setTimeout(() => setMessage(""), 3000);
       load();
     } catch (error) {
-      console.error('Error resolving ticket:', error);
-      alert('Failed to resolve ticket');
+      console.error("Error resolving ticket:", error);
+      alert("Failed to resolve ticket");
     }
   };
 
@@ -100,7 +105,7 @@ function AdminTickets() {
           <table className="w-full table-fixed">
             <thead className="bg-gray-100">
               <tr>
-                <th className="px-4 py-4 text-left font-semibold text-gray-700 w-20">User ID</th>
+                <th className="px-4 py-4 text-left font-semibold text-gray-700 w-20">ID</th>
                 <th className="px-4 py-4 text-left font-semibold text-gray-700 w-48">User Email</th>
                 <th className="px-4 py-4 text-left font-semibold text-gray-700">Subject</th>
                 <th className="px-4 py-4 text-left font-semibold text-gray-700 w-24">Priority</th>
@@ -140,7 +145,7 @@ function AdminTickets() {
                     </span>
                   </td>
                   <td className="px-4 py-4 text-gray-600 text-sm">
-                    {t.createdAt ? new Date(t.createdAt).toLocaleDateString('en-GB') : "13/10/2025"}
+                    {t.createdAt ? new Date(t.createdAt).toLocaleDateString("en-GB") : "13/10/2025"}
                   </td>
                   <td className="px-4 py-4">
                     <div className="flex justify-center gap-1">
@@ -155,7 +160,7 @@ function AdminTickets() {
                       {t.status !== "resolved" && (
                         <button
                           className="px-2 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700 flex items-center gap-1"
-                          onClick={() => resolve(t._id)}
+                          onClick={() => setReplying(t)}
                           title="Resolve"
                         >
                           <CheckCircle2 className="w-3 h-3" />
@@ -194,10 +199,7 @@ function AdminTickets() {
           >
             <div className="px-6 py-4 border-b flex items-center justify-between">
               <h3 className="text-xl font-bold text-gray-900">Ticket Details</h3>
-              <button
-                onClick={() => setFocus(null)}
-                className="p-2 hover:bg-gray-100 rounded-lg"
-              >
+              <button onClick={() => setFocus(null)} className="p-2 hover:bg-gray-100 rounded-lg">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -248,22 +250,44 @@ function AdminTickets() {
                 <div className="text-gray-600 font-medium">Description</div>
                 <div className="col-span-2 text-gray-900">{focus.description}</div>
               </div>
-              {focus.createdAt && (
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="text-gray-600 font-medium">Created</div>
-                  <div className="col-span-2 text-gray-900">
-                    {new Date(focus.createdAt).toLocaleString()}
-                  </div>
-                </div>
-              )}
-              {focus.resolvedAt && (
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="text-gray-600 font-medium">Resolved</div>
-                  <div className="col-span-2 text-gray-900">
-                    {new Date(focus.resolvedAt).toLocaleString()}
-                  </div>
-                </div>
-              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reply Modal */}
+      {replying && (
+        <div
+          className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
+          onClick={() => setReplying(null)}
+        >
+          <div
+            className="bg-white rounded-2xl w-full max-w-md shadow-2xl p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-xl font-bold text-gray-900 mb-3">Reply to Ticket</h3>
+            <p className="text-gray-600 text-sm mb-4">
+              Ticket: <span className="font-medium">{replying.subject}</span>
+            </p>
+            <textarea
+              className="w-full border rounded-xl p-3 text-gray-800 focus:ring-2 focus:ring-blue-500 outline-none min-h-[100px]"
+              placeholder="Type your reply message here..."
+              value={replyText}
+              onChange={(e) => setReplyText(e.target.value)}
+            />
+            <div className="flex justify-end gap-3 mt-4">
+              <button
+                onClick={() => setReplying(null)}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => resolve(replying._id)}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2"
+              >
+                <Send className="w-4 h-4" /> Send Reply
+              </button>
             </div>
           </div>
         </div>

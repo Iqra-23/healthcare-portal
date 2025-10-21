@@ -40,9 +40,7 @@ function AdminUsers() {
 
   const filtered = list.filter(
     (u) =>
-      `${u.firstName} ${u.lastName}`
-        .toLowerCase()
-        .includes(filter.toLowerCase()) ||
+      `${u.firstName} ${u.lastName}`.toLowerCase().includes(filter.toLowerCase()) ||
       u.email?.toLowerCase().includes(filter.toLowerCase())
   );
 
@@ -141,19 +139,21 @@ function AdminUsers() {
         </div>
       ) : (
         <div className="bg-white rounded-xl shadow-md overflow-hidden">
-          {/* Make table compact + fixed layout to avoid overflow at 100% zoom */}
+          {/* compact + fixed layout */}
           <table className="w-full table-fixed text-sm">
             <colgroup>
+              <col style={{ width: "12%" }} /> {/* ID */}
               <col style={{ width: "18%" }} /> {/* Name */}
               <col style={{ width: "30%" }} /> {/* Email */}
               <col style={{ width: "16%" }} /> {/* Phone */}
               <col style={{ width: "14%" }} /> {/* Gender */}
-              <col style={{ width: "12%" }} /> {/* Role */}
+              <col style={{ width: "10%" }} /> {/* Role */}
               <col style={{ width: "10%" }} /> {/* Actions */}
             </colgroup>
 
             <thead className="bg-gray-100">
               <tr>
+                <th className="px-4 py-3 text-left font-semibold text-gray-700">ID</th>
                 <th className="px-4 py-3 text-left font-semibold text-gray-700">Name</th>
                 <th className="px-4 py-3 text-left font-semibold text-gray-700">Email</th>
                 <th className="px-4 py-3 text-left font-semibold text-gray-700">Phone</th>
@@ -166,6 +166,11 @@ function AdminUsers() {
             <tbody className="divide-y">
               {filtered.map((u) => (
                 <tr key={u._id} className="hover:bg-gray-50">
+                  {/* ID (read-only) */}
+                  <td className="px-4 py-3 text-gray-700">
+                    <span title={u._id}>{String(u._id).slice(0, 8)}…</span>
+                  </td>
+
                   {/* Name */}
                   <td className="px-4 py-3 font-medium">
                     {editingId === u._id ? (
@@ -182,7 +187,9 @@ function AdminUsers() {
                         />
                       </div>
                     ) : (
-                      <span className="block truncate">{u.firstName} {u.lastName}</span>
+                      <span className="block truncate">
+                        {u.firstName} {u.lastName}
+                      </span>
                     )}
                   </td>
 
@@ -235,7 +242,7 @@ function AdminUsers() {
                       <select
                         value={editData.role || ""}
                         onChange={(e) => handleChange("role", e.target.value)}
-                        className={`px-2 py-1 rounded-full text-xs font-medium border-0 bg-white`}
+                        className="px-2 py-1 rounded-full text-xs font-medium border-0 bg-white"
                       >
                         <option value="user">User</option>
                         <option value="admin">Admin</option>

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Search, Edit, Trash2, FileText, X } from "lucide-react";
+import { Search, Edit, Trash2, FileText, X, Plus } from "lucide-react";
 
 const API = "http://localhost:5000/api";
 
@@ -17,6 +17,7 @@ function AdminArticles() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [editModal, setEditModal] = useState(null);
+  const [addModal, setAddModal] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
     category: "",
@@ -64,6 +65,28 @@ function AdminArticles() {
   });
 
   // ============================================
+  // Reset form data
+  // ============================================
+  const resetForm = () => {
+    setFormData({
+      title: "",
+      category: "",
+      imageUrl: "",
+      shortDescription: "",
+      content: "",
+      sourceLink: "",
+    });
+  };
+
+  // ============================================
+  // Open add modal
+  // ============================================
+  const openAddModal = () => {
+    resetForm();
+    setAddModal(true);
+  };
+
+  // ============================================
   // Open edit modal
   // ============================================
   const openEditModal = (article) => {
@@ -80,6 +103,45 @@ function AdminArticles() {
         getField(article, "sourceLink") || getField(article, "SourceLink"),
     });
     setEditModal(article);
+  };
+
+  // ============================================
+  // ✅ Handle Add Article
+  // ============================================
+  const handleAdd = async (e) => {
+    e.preventDefault();
+
+    try {
+      const payload = {
+        Title: formData.title,
+        Category: formData.category,
+        ShortDescription: formData.shortDescription,
+        Content: formData.content,
+        ImageURL: formData.imageUrl,
+        SourceLink: formData.sourceLink,
+      };
+
+      console.log("📤 Sending create request:", payload);
+
+      const res = await fetch(`${API}/articles`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+      console.log("📥 Response from backend:", data);
+
+      if (!res.ok) throw new Error(data.error || "Failed to create article");
+
+      alert("✅ Article created successfully!");
+      setAddModal(false);
+      resetForm();
+      await load(); // refresh list
+    } catch (err) {
+      console.error("❌ Error creating article:", err);
+      alert("❌ Failed to create article: " + err.message);
+    }
   };
 
   // ============================================
@@ -165,7 +227,7 @@ function AdminArticles() {
         </p>
       </div>
 
-      {/* Search */}
+      {/* Search & Add Button */}
       <div className="flex items-center gap-4 mb-6">
         <div className="flex-1 bg-white rounded-2xl shadow-lg p-4 flex items-center gap-3">
           <Search className="w-5 h-5 text-gray-400" />
@@ -176,6 +238,13 @@ function AdminArticles() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
+        <button
+          onClick={openAddModal}
+          className="bg-blue-600 text-white px-6 py-4 rounded-2xl shadow-lg hover:bg-blue-700 transition-colors flex items-center gap-2 font-semibold"
+        >
+          <Plus className="w-5 h-5" />
+          Add Article
+        </button>
       </div>
 
       {/* Loader */}
@@ -279,6 +348,149 @@ function AdminArticles() {
               <p className="text-gray-500 text-lg">No articles found</p>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Add Article Modal */}
+      {addModal && (
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+          onClick={() => setAddModal(false)}
+        >
+          <div
+            className="bg-white rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-6 py-4 border-b flex items-center justify-between sticky top-0 bg-white z-10">
+              <h3 className="text-xl font-bold text-gray-900">Add New Article</h3>
+              <button
+                onClick={() => setAddModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAdd} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Title *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.title}
+                  onChange={(e) =>
+                    setFormData({ ...formData, title: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  placeholder="Enter article title"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Category *
+                </label>
+                <select
+                  required
+                  value={formData.category}
+                  onChange={(e) =>
+                    setFormData({ ...formData, category: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                >
+                  <option value="">Select Category</option>
+                  {categories.map((cat) => (
+                    <option key={cat} value={cat}>
+                      {cat}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Image URL
+                </label>
+                <input
+                  type="url"
+                  value={formData.imageUrl}
+                  onChange={(e) =>
+                    setFormData({ ...formData, imageUrl: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  placeholder="https://example.com/image.jpg"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Short Description *
+                </label>
+                <textarea
+                  required
+                  rows={3}
+                  value={formData.shortDescription}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      shortDescription: e.target.value,
+                    })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  placeholder="Brief description of the article"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Content *
+                </label>
+                <textarea
+                  required
+                  rows={6}
+                  value={formData.content}
+                  onChange={(e) =>
+                    setFormData({ ...formData, content: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  placeholder="Full article content"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Source Link
+                </label>
+                <input
+                  type="url"
+                  value={formData.sourceLink}
+                  onChange={(e) =>
+                    setFormData({ ...formData, sourceLink: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  placeholder="https://source.com/article"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="submit"
+                  className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+                >
+                  Create Article
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAddModal(false)}
+                  className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 
