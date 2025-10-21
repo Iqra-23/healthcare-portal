@@ -19,10 +19,8 @@ import AdminTickets from "./AdminTickets";
 const API_BASE = "http://localhost:5000/api";
 
 const AdminDashboard = () => {
-  const [user] = useState({
-    firstName: "Admin",
-    email: "admin@healthcare.com",
-  });
+  // ✅ Load real admin from localStorage (set during login)
+  const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState("dashboard");
   const [stats, setStats] = useState({
     users: 0,
@@ -31,6 +29,17 @@ const AdminDashboard = () => {
     tickets: 0,
   });
   const token = localStorage.getItem("hp:token");
+
+  useEffect(() => {
+    const raw = localStorage.getItem("hp:user");
+    if (raw) {
+      try {
+        setUser(JSON.parse(raw));
+      } catch (e) {
+        console.error("Failed to parse hp:user", e);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -54,7 +63,7 @@ const AdminDashboard = () => {
         console.error("Error fetching stats:", err);
       }
     };
-    fetchStats();
+    if (token) fetchStats();
   }, [token]);
 
   const logout = () => {
@@ -80,9 +89,8 @@ const AdminDashboard = () => {
       green: "from-green-500 to-green-600",
       purple: "from-purple-500 to-purple-600",
     };
-
     return (
-      <div className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-all cursor-pointer">
+      <div className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-all">
         <div
           className={`w-16 h-16 rounded-xl bg-gradient-to-br ${colors[color]} flex items-center justify-center mb-4`}
         >
@@ -100,15 +108,15 @@ const AdminDashboard = () => {
       case "dashboard":
         return (
           <div>
-            {/* 🔷 Blue Welcome Header (matching user dashboard style) */}
+            {/* Header */}
             <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-8 mb-8 text-white shadow-lg">
               <h1 className="text-4xl font-bold mb-1">
-                Welcome back, {user.firstName}! 👋
+                Welcome back, {user?.firstName || "Admin"}! 👋
               </h1>
-              <p className="text-blue-100">{user.email}</p>
+              <p className="text-blue-100">{user?.email || "Loading..."}</p>
             </div>
 
-            {/* Dashboard Stats */}
+            {/* Stats */}
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               <StatCard
                 icon={Users}
@@ -164,10 +172,10 @@ const AdminDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen flex bg-gray-50">
-      {/* Sidebar (profile card removed) */}
-      <aside className="w-64 bg-gradient-to-b from-[#0B3B8C] to-[#0A2A6B] text-white flex flex-col shadow-2xl">
-        <div className="p-6 flex-1 flex flex-col">
+    <div className="min-h-screen bg-gray-50">
+      {/* ===== FIXED SIDEBAR (doesn't move on scroll) ===== */}
+      <aside className="fixed inset-y-0 left-0 w-64 bg-gradient-to-b from-[#0B3B8C] to-[#0A2A6B] text-white shadow-2xl z-20">
+        <div className="h-full p-6 flex flex-col">
           {/* Logo */}
           <div className="flex items-center gap-3 mb-8">
             <div className="bg-white/10 p-3 rounded-xl backdrop-blur-sm">
@@ -181,7 +189,7 @@ const AdminDashboard = () => {
             </div>
           </div>
 
-          {/* Navigation */}
+          {/* Nav */}
           <nav className="space-y-1 flex-1">
             {sidebarItems.map((item) => (
               <button
@@ -212,8 +220,8 @@ const AdminDashboard = () => {
         </div>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 p-8 overflow-auto">{renderContent()}</main>
+      {/* ===== MAIN (scrolls independently) ===== */}
+      <main className="ml-64 h-screen overflow-y-auto p-8">{renderContent()}</main>
     </div>
   );
 };
