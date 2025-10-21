@@ -18,14 +18,42 @@ export function AuthProvider({ children }) {
 
   // ---- Keep user/token synced with localStorage ----
   useEffect(() => {
-    if (user) localStorage.setItem("hp:user", JSON.stringify(user));
-    else localStorage.removeItem("hp:user");
+    try {
+      if (user) localStorage.setItem("hp:user", JSON.stringify(user));
+      else localStorage.removeItem("hp:user");
+    } catch (err) {
+      console.error("Error saving user:", err);
+    }
   }, [user]);
 
   useEffect(() => {
-    if (token) localStorage.setItem("hp:token", token);
-    else localStorage.removeItem("hp:token");
+    try {
+      if (token) localStorage.setItem("hp:token", token);
+      else localStorage.removeItem("hp:token");
+    } catch (err) {
+      console.error("Error saving token:", err);
+    }
   }, [token]);
+
+  // ✅ Instantly sync after login/logout or across tabs
+  useEffect(() => {
+    const syncAuth = () => {
+      try {
+        const storedUser = localStorage.getItem("hp:user");
+        const storedToken = localStorage.getItem("hp:token");
+
+        setUser(storedUser ? JSON.parse(storedUser) : null);
+        setToken(storedToken || null);
+      } catch (err) {
+        console.error("Auth sync error:", err);
+      }
+    };
+
+    // Run immediately + when storage updates
+    syncAuth();
+    window.addEventListener("storage", syncAuth);
+    return () => window.removeEventListener("storage", syncAuth);
+  }, []);
 
   // ---- Attach token to axios requests ----
   useEffect(() => {
@@ -42,6 +70,9 @@ export function AuthProvider({ children }) {
     setToken(null);
     localStorage.removeItem("hp:user");
     localStorage.removeItem("hp:token");
+
+    // ✅ Broadcast change instantly to update all components
+    window.dispatchEvent(new Event("storage"));
   };
 
   // ---- Context Value ----
@@ -59,6 +90,10 @@ export function AuthProvider({ children }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
+// ✅ Custom hook for convenience
 export function useAuth() {
-  return useContext(AuthContext);
+  const context = useContext(AuthContext);
+  if (!context)
+    throw new Error("useAuth must be used within an AuthProvider");
+  return context;
 }

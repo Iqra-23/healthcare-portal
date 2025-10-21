@@ -17,12 +17,13 @@ import LoginPage from "./pages/Login.jsx";
 import SignupPage from "./pages/Signup.jsx";
 import ArticlesPage from "./pages/ArticlesPage.jsx";
 import MedicinesPage from "./pages/MedicinesPage.jsx";
-import AboutPage from "./pages/AboutPage.jsx";
+import AboutPage from "./pages/AboutPage.jsx"; // <-- will now get onNavigate prop
 import UserDashboard from "./pages/UserDashboard.jsx";
 import AdminDashboard from "./pages/AdminDashboard.jsx";
 
 // ✅ Auth Context
 import { AuthProvider, useAuth } from "./state/AuthContext.jsx";
+
 
 // -------------------- Header --------------------
 const Header = ({ currentPage, setCurrentPage, scrolled }) => {
@@ -53,14 +54,18 @@ const Header = ({ currentPage, setCurrentPage, scrolled }) => {
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center py-4">
-          {/* Logo - Digital Healthcare Assistant */}
+          {/* Logo */}
           <div
             className="flex items-center gap-3 cursor-pointer"
             onClick={() => setCurrentPage("home")}
           >
             <div className="bg-gradient-to-br from-blue-600 to-indigo-600 p-2 rounded-xl">
-              <svg viewBox="0 0 24 24" className="w-7 h-7 text-white" fill="currentColor">
-                <path d="M6 5a1 1 0 0 1 2 0v5a4 4 0 1 0 8 0V5a1 1 0 1 1 2 0v5a6 6 0 0 1-5 5.917V18a3 3 0 1 1-2 0v-2.083A6 6 0 0 1 6 10V5z"/>
+              <svg
+                viewBox="0 0 24 24"
+                className="w-7 h-7 text-white"
+                fill="currentColor"
+              >
+                <path d="M6 5a1 1 0 0 1 2 0v5a4 4 0 1 0 8 0V5a1 1 0 1 1 2 0v5a6 6 0 0 1-5 5.917V18a3 3 0 1 1-2 0v-2.083A6 6 0 0 1 6 10V5z" />
               </svg>
             </div>
             <div>
@@ -184,17 +189,17 @@ const Header = ({ currentPage, setCurrentPage, scrolled }) => {
   );
 };
 
+
 // -------------------- Footer --------------------
 const Footer = () => (
   <footer className="bg-slate-950 text-slate-300">
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      <div className="grid md:grid-cols-4 gap-8">
-        {/* Brand Section */}
+      <div className="grid md:grid-cols-2 gap-8">
         <div>
           <div className="flex items-center gap-3 mb-4">
             <div className="bg-blue-600 p-2 rounded-xl">
               <svg viewBox="0 0 24 24" className="w-6 h-6 text-white" fill="currentColor">
-                <path d="M6 5a1 1 0 0 1 2 0v5a4 4 0 1 0 8 0V5a1 1 0 1 1 2 0v5a6 6 0 0 1-5 5.917V18a3 3 0 1 1-2 0v-2.083A6 6 0 0 1 6 10V5z"/>
+                <path d="M6 5a1 1 0 0 1 2 0v5a4 4 0 1 0 8 0V5a1 1 0 1 1 2 0v5a6 6 0 0 1-5 5.917V18a3 3 0 1 1-2 0v-2.083A6 6 0 0 1 6 10V5z" />
               </svg>
             </div>
             <div>
@@ -207,43 +212,23 @@ const Footer = () => (
           </p>
         </div>
 
-        {/* Quick Links */}
-        <div>
-          <h4 className="font-semibold text-white mb-4">Quick Links</h4>
-          <ul className="space-y-2 text-sm text-slate-400">
-            <li><a href="#" className="hover:text-white transition">Home</a></li>
-            <li><a href="#" className="hover:text-white transition">Features</a></li>
-            <li><a href="#" className="hover:text-white transition">Get Started</a></li>
-          </ul>
-        </div>
-
-        {/* Resources */}
-        <div>
-          <h4 className="font-semibold text-white mb-4">Resources</h4>
-          <ul className="space-y-2 text-sm text-slate-400">
-            <li><a href="#" className="hover:text-white transition">Health Articles</a></li>
-            <li><a href="#" className="hover:text-white transition">Medicine Database</a></li>
-            <li><a href="#" className="hover:text-white transition">Support</a></li>
-          </ul>
-        </div>
-
-        {/* Connect */}
-        <div>
+        <div className="md:justify-self-end md:text-right">
           <h4 className="font-semibold text-white mb-4">Connect</h4>
-          <div className="flex gap-3">
+          <div className="flex gap-3 md:justify-end">
+            {/* Social Buttons (unchanged) */}
             <a href="#" className="bg-blue-600 hover:bg-blue-700 text-white w-10 h-10 rounded-lg flex items-center justify-center transition">
               <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor">
-                <path d="M13 22v-9h3l1-4h-4V7a1 1 0 0 1 1-1h3V2h-3a5 5 0 0 0-5 5v2H6v4h3v9z"/>
+                <path d="M13 22v-9h3l1-4h-4V7a1 1 0 0 1 1-1h3V2h-3a5 5 0 0 0-5 5v2H6v4h3v9z" />
               </svg>
             </a>
             <a href="#" className="bg-blue-600 hover:bg-blue-700 text-white w-10 h-10 rounded-lg flex items-center justify-center transition">
               <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor">
-                <path d="M17 3h3l-7 9 7 9h-3l-6-8-6 8H2l7-9-7-9h3l6 8z"/>
+                <path d="M17 3h3l-7 9 7 9h-3l-6-8-6 8H2l7-9-7-9h3l6 8z" />
               </svg>
             </a>
             <a href="#" className="bg-blue-600 hover:bg-blue-700 text-white w-10 h-10 rounded-lg flex items-center justify-center transition">
               <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor">
-                <path d="M6.94 6.5A1.94 1.94 0 1 1 5 4.56 1.94 1.94 0 0 1 6.94 6.5zM5.5 8.5h2.9V20H5.5zM10.5 8.5h2.78v1.57h.04a3.05 3.05 0 0 1 2.74-1.5c2.94 0 3.48 1.94 3.48 4.45V20h-2.9v-4.89c0-1.17 0-2.67-1.63-2.67s-1.88 1.27-1.88 2.59V20H10.5z"/>
+                <path d="M6.94 6.5A1.94 1.94 0 1 1 5 4.56 1.94 1.94 0 0 1 6.94 6.5zM5.5 8.5h2.9V20H5.5zM10.5 8.5h2.78v1.57h.04a3.05 3.05 0 0 1 2.74-1.5c2.94 0 3.48 1.94 3.48 4.45V20h-2.9v-4.89c0-1.17 0-2.67-1.63-2.67s-1.88 1.27-1.88 2.59V20H10.5z" />
               </svg>
             </a>
           </div>
@@ -256,6 +241,7 @@ const Footer = () => (
     </div>
   </footer>
 );
+
 
 // -------------------- Main App --------------------
 const App = () => {
@@ -270,7 +256,6 @@ const App = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // ✅ Fix blank screen: restore from localStorage if available
   useEffect(() => {
     try {
       const savedUser = JSON.parse(localStorage.getItem("hp:user"));
@@ -293,7 +278,6 @@ const App = () => {
           onLoginSuccess={(token, role) => {
             localStorage.setItem("hp:token", token);
             setToken(token);
-            // ✅ Save user info for persistence
             const storedUser = JSON.parse(localStorage.getItem("hp:user"));
             if (storedUser) setUser(storedUser);
             setCurrentPage(role === "admin" ? "admin-dashboard" : "user-dashboard");
@@ -309,24 +293,17 @@ const App = () => {
     return (
       <>
         {showHeaderFooter && (
-          <Header
-            currentPage={currentPage}
-            setCurrentPage={setCurrentPage}
-            scrolled={scrolled}
-          />
+          <Header currentPage={currentPage} setCurrentPage={setCurrentPage} scrolled={scrolled} />
         )}
 
         <main className="min-h-screen">
           {currentPage === "home" && <HomePage onNavigate={setCurrentPage} />}
-          {currentPage === "articles" && (
-            <ArticlesPage token={token} isAdmin={isAdmin} />
-          )}
-          {currentPage === "medicines" && (
-            <MedicinesPage token={token} isAdmin={isAdmin} />
-          )}
-          {currentPage === "about" && <AboutPage />}
+          {currentPage === "articles" && <ArticlesPage token={token} isAdmin={isAdmin} />}
+          {currentPage === "medicines" && <MedicinesPage token={token} isAdmin={isAdmin} />}
+          
+          {/* ✅ pass navigation prop to AboutPage */}
+          {currentPage === "about" && <AboutPage onNavigate={setCurrentPage} />}
 
-          {/* Dashboards */}
           {currentPage === "user-dashboard" && user && <UserDashboard />}
           {currentPage === "admin-dashboard" && user && isAdmin && <AdminDashboard />}
         </main>

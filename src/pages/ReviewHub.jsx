@@ -1,8 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { Star, CheckCircle, X } from "lucide-react";
 import { ReviewAPI } from "../utils/api.js";
+import { useAuth } from "../state/AuthContext";
 
 const ReviewHub = () => {
+  const { user, token } = useAuth();
+
+  // 🧠 fallback for immediate display (no refresh)
+  const localUser = JSON.parse(localStorage.getItem("hp:user") || "{}");
+  const displayUser = user || localUser;
+
   const [reviews, setReviews] = useState([]);
   const [filtered, setFiltered] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -16,7 +23,7 @@ const ReviewHub = () => {
   });
   const [message, setMessage] = useState({ text: "", type: "" });
 
-  // Fetch all community reviews
+  // ✅ Fetch all community reviews
   useEffect(() => {
     const fetchReviews = async () => {
       try {
@@ -38,7 +45,7 @@ const ReviewHub = () => {
     fetchReviews();
   }, []);
 
-  // Search filter
+  // ✅ Search filter
   useEffect(() => {
     const filteredData = reviews.filter((r) =>
       r.medicineName?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -46,15 +53,17 @@ const ReviewHub = () => {
     setFiltered(filteredData);
   }, [searchTerm, reviews]);
 
-  // Form handling
+  // ✅ Handle form changes
   const handleChange = (e) =>
     setForm({ ...form, [e.target.name]: e.target.value });
 
   const resetForm = () =>
     setForm({ medicineName: "", rating: 0, reviewTitle: "", reviewText: "" });
 
+  // ✅ Submit review
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     if (!form.medicineName || !form.reviewTitle || !form.reviewText || !form.rating) {
       setMessage({ text: "Please fill all fields and select a rating.", type: "error" });
       return;
@@ -62,8 +71,15 @@ const ReviewHub = () => {
 
     try {
       setLoading(true);
-      const res = await ReviewAPI.create(form);
-      const newReview = res?.data;
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const res = await ReviewAPI.create(form, { headers });
+
+      // ✅ Attach user manually for instant UI update
+      const newReview = {
+        ...res?.data,
+        user: displayUser,
+      };
+
       setReviews([newReview, ...reviews]);
       setFiltered([newReview, ...filtered]);
       setShowModal(false);
@@ -86,7 +102,9 @@ const ReviewHub = () => {
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-gray-800">Review Hub</h1>
+          <h1 className="text-3xl font-bold text-gray-800">
+            Review Hub
+          </h1>
           <button
             onClick={() => setShowModal(true)}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700"
@@ -97,6 +115,13 @@ const ReviewHub = () => {
         <p className="text-gray-600 mb-6">
           Share and read authentic medicine reviews from the community.
         </p>
+
+        {/* Current user info */}
+        {displayUser?.email && (
+          <div className="bg-blue-100 border border-blue-300 text-blue-800 px-4 py-2 rounded-lg mb-6 text-sm">
+            Logged in as <strong>{displayUser.email}</strong>
+          </div>
+        )}
 
         {/* Messages */}
         {message.text && (
@@ -138,7 +163,7 @@ const ReviewHub = () => {
                     <div>
                       <p className="font-semibold text-gray-800">
                         {r.user
-                          ? `${r.user.firstName} ${r.user.lastName || ""}`
+                          ? `${r.user.firstName || ""} ${r.user.lastName || ""}`
                           : "Anonymous"}
                       </p>
                       <p className="text-xs text-gray-500">
@@ -147,10 +172,13 @@ const ReviewHub = () => {
                           : ""}
                       </p>
                     </div>
-                    <CheckCircle className="w-4 h-4 text-blue-600 ml-2" title="Verified" />
+                    <CheckCircle
+                      className="w-4 h-4 text-blue-600 ml-2"
+                      title="Verified"
+                    />
                   </div>
                   <span className="text-sm px-2 py-1 bg-gray-100 rounded-full text-gray-600">
-                    {r.medicineName}
+                    {r.medicineName || "Unknown"}
                   </span>
                 </div>
 
@@ -182,7 +210,7 @@ const ReviewHub = () => {
         {showModal && (
           <div
             className="fixed inset-0 z-50 flex items-center justify-center bg-white/50"
-            onClick={() => setShowModal(false)} // close on backdrop click
+            onClick={() => setShowModal(false)}
             aria-modal="true"
             role="dialog"
           >
@@ -190,7 +218,6 @@ const ReviewHub = () => {
               className="bg-white w-full max-w-md rounded-xl shadow-2xl border border-gray-200 p-6 relative"
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Close Button */}
               <button
                 onClick={() => setShowModal(false)}
                 className="absolute top-3 right-3 text-gray-500 hover:text-gray-700"

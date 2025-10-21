@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 
-const API_BASE = "http://localhost:5000/api/auth"; // ✅ exact backend route
+const API_BASE = "http://localhost:5000/api/auth"; // ✅ must match your backend prefix
 
 export const LoginPage = ({ onSwitchToSignup, onLoginSuccess }) => {
   const [isAdmin, setIsAdmin] = useState(false);
@@ -9,11 +9,11 @@ export const LoginPage = ({ onSwitchToSignup, onLoginSuccess }) => {
   const [password, setPassword] = useState("");
   const [otp, setOtp] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [step, setStep] = useState("login");
+  const [step, setStep] = useState("login"); // 'login' or 'otp'
   const [message, setMessage] = useState({ text: "", type: "" });
   const [loading, setLoading] = useState(false);
 
-  // Step 1 — Request login (sends OTP)
+  // ✅ Step 1: Send login request (email + password)
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -38,13 +38,14 @@ export const LoginPage = ({ onSwitchToSignup, onLoginSuccess }) => {
         });
       }
     } catch (err) {
+      console.error(err);
       setMessage({ text: "Network error. Please try again.", type: "error" });
     } finally {
       setLoading(false);
     }
   };
 
-  // Step 2 — Verify OTP and redirect
+  // ✅ Step 2: Verify OTP
   const handleVerifyOTP = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -64,13 +65,18 @@ export const LoginPage = ({ onSwitchToSignup, onLoginSuccess }) => {
         localStorage.setItem("hp:token", result.token);
         localStorage.setItem("hp:user", JSON.stringify(result.user || {}));
 
-        // ✅ Send both token and user to App.jsx
-        setMessage({ text: "Login successful!", type: "success" });
-       setTimeout(() => {
-  const role = result.user?.role === "admin" ? "admin" : "user";
-  onLoginSuccess(result.token, role);
-}, 800);
+        // ✅ Instantly update AuthContext (no refresh needed)
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new Event("storage"));
+        }
 
+        setMessage({ text: "Login successful!", type: "success" });
+
+        // ✅ Redirect user/admin accordingly
+        setTimeout(() => {
+          const role = result.user?.role === "admin" ? "admin" : "user";
+          onLoginSuccess(result.token, role);
+        }, 800);
       } else {
         setMessage({
           text: result.error || result.message || "Invalid OTP",
@@ -78,13 +84,14 @@ export const LoginPage = ({ onSwitchToSignup, onLoginSuccess }) => {
         });
       }
     } catch (err) {
+      console.error(err);
       setMessage({ text: "Network error. Please try again.", type: "error" });
     } finally {
       setLoading(false);
     }
   };
 
-  // Forgot password
+  // ✅ Forgot password handler
   const handleForgotPassword = async () => {
     const input = window.prompt("Enter your email to receive a reset link:");
     if (!input) return;
@@ -111,7 +118,7 @@ export const LoginPage = ({ onSwitchToSignup, onLoginSuccess }) => {
     }
   };
 
-  // Google login
+  // ✅ Google login
   const handleGoogleLogin = () => {
     window.location.href = `${API_BASE}/google`;
   };
@@ -120,13 +127,15 @@ export const LoginPage = ({ onSwitchToSignup, onLoginSuccess }) => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
+          {/* Header */}
           <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-8 py-6 text-center">
             <h1 className="text-3xl font-bold text-white mb-2">Welcome Back</h1>
             <p className="text-blue-100">Sign in to your healthcare portal</p>
           </div>
 
+          {/* Main content */}
           <div className="p-8">
-            {/* Login Type Toggle */}
+            {/* Login type switch */}
             <div className="flex gap-2 mb-8 bg-gray-100 p-1 rounded-xl">
               <button
                 onClick={() => setIsAdmin(false)}
@@ -150,7 +159,7 @@ export const LoginPage = ({ onSwitchToSignup, onLoginSuccess }) => {
               </button>
             </div>
 
-            {/* Step 1: Email/Password */}
+            {/* Step 1: Email & Password */}
             {step === "login" && (
               <form onSubmit={handleLogin} className="space-y-5">
                 <div>
@@ -273,11 +282,28 @@ export const LoginPage = ({ onSwitchToSignup, onLoginSuccess }) => {
                 onClick={handleGoogleLogin}
                 className="w-full flex items-center justify-center gap-3 border-2 border-gray-300 rounded-xl py-3 hover:bg-gray-50 transition font-medium"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="20" height="20">
-                  <path fill="#EA4335" d="M24 9.5c3.54 0 6.7 1.22 9.18 3.6l6.84-6.84C35.94 2.7 30.36 0 24 0 14.62 0 6.53 5.38 2.56 13.22l7.98 6.22C12.13 13.33 17.56 9.5 24 9.5z" />
-                  <path fill="#34A853" d="M46.5 24.5c0-1.5-.13-2.94-.38-4.34H24v8.21h12.65c-.55 2.96-2.21 5.48-4.71 7.17l7.3 5.66C43.63 37.01 46.5 31.3 46.5 24.5z" />
-                  <path fill="#FBBC05" d="M10.54 28.56A13.48 13.48 0 0 1 9.5 24c0-1.57.28-3.07.78-4.46l-7.98-6.22A23.891 23.891 0 0 0 0 24c0 3.88.93 7.55 2.56 10.68l7.98-6.12z" />
-                  <path fill="#4285F4" d="M24 48c6.36 0 11.7-2.09 15.6-5.7l-7.3-5.66c-2.03 1.36-4.63 2.16-8.3 2.16-6.44 0-11.87-3.83-14.46-9.22l-7.98 6.12C6.53 42.62 14.62 48 24 48z" />
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 48 48"
+                  width="20"
+                  height="20"
+                >
+                  <path
+                    fill="#EA4335"
+                    d="M24 9.5c3.54 0 6.7 1.22 9.18 3.6l6.84-6.84C35.94 2.7 30.36 0 24 0 14.62 0 6.53 5.38 2.56 13.22l7.98 6.22C12.13 13.33 17.56 9.5 24 9.5z"
+                  />
+                  <path
+                    fill="#34A853"
+                    d="M46.5 24.5c0-1.5-.13-2.94-.38-4.34H24v8.21h12.65c-.55 2.96-2.21 5.48-4.71 7.17l7.3 5.66C43.63 37.01 46.5 31.3 46.5 24.5z"
+                  />
+                  <path
+                    fill="#FBBC05"
+                    d="M10.54 28.56A13.48 13.48 0 0 1 9.5 24c0-1.57.28-3.07.78-4.46l-7.98-6.22A23.891 23.891 0 0 0 0 24c0 3.88.93 7.55 2.56 10.68l7.98-6.12z"
+                  />
+                  <path
+                    fill="#4285F4"
+                    d="M24 48c6.36 0 11.7-2.09 15.6-5.7l-7.3-5.66c-2.03 1.36-4.63 2.16-8.3 2.16-6.44 0-11.87-3.83-14.46-9.22l-7.98 6.12C6.53 42.62 14.62 48 24 48z"
+                  />
                 </svg>
                 Sign in with Google
               </button>

@@ -1,247 +1,284 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { Search, FileText, Eye, X } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { ArrowLeft } from "lucide-react";
 
-const API = "http://localhost:5000/api";
+const API_BASE = "http://localhost:5000/api";
 
-function AdminArticles() {
-  const token = localStorage.getItem("hp:token");
-  const headers = useMemo(
-    () => ({
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    }),
-    [token]
-  );
+const categoryStyles = {
+  Cancer: { color: "from-red-500 to-red-700", iconBg: "bg-red-500" },
+  Neurology: { color: "from-purple-500 to-purple-700", iconBg: "bg-purple-500" },
+  Cardiology: { color: "from-pink-500 to-rose-600", iconBg: "bg-pink-500" },
+  Diabetes: { color: "from-sky-500 to-blue-600", iconBg: "bg-sky-500" },
+  Nutrition: { color: "from-green-500 to-emerald-600", iconBg: "bg-green-500" },
+  "Clinical Trials": { color: "from-indigo-500 to-blue-700", iconBg: "bg-indigo-500" },
+  Psychology: { color: "from-orange-500 to-amber-600", iconBg: "bg-orange-500" },
+  Physiology: { color: "from-teal-500 to-cyan-600", iconBg: "bg-teal-500" },
+};
 
-  const [list, setList] = useState([]);
-  const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [viewModal, setViewModal] = useState(null); // ✅ for View modal
+// ✅ Category list
+const categories = [
+  { name: "Cancer", desc: "Oncology research, treatments, and patient care" },
+  { name: "Neurology", desc: "Brain, nervous system, and neurological conditions" },
+  { name: "Cardiology", desc: "Heart health, cardiovascular diseases, and treatments" },
+  { name: "Diabetes", desc: "Blood sugar management and diabetes care" },
+  { name: "Nutrition", desc: "Diet, nutrition science, and healthy eating" },
+  { name: "Clinical Trials", desc: "Medical research and clinical study findings" },
+  { name: "Psychology", desc: "Mental health, behavior, and psychological well-being" },
+  { name: "Physiology", desc: "Body functions, systems, and biological processes" },
+];
 
-  const load = async () => {
+const ArticlesPage = () => {
+  const [view, setView] = useState("main"); // main | category | detail
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [articles, setArticles] = useState([]);
+  const [selectedArticle, setSelectedArticle] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  // ✅ Fetch articles for a category
+  const fetchArticles = async (category, limit = 3) => {
     try {
       setLoading(true);
-      const res = await fetch(`${API}/articles`, { headers });
+      const res = await fetch(
+        `${API_BASE}/articles?category=${encodeURIComponent(category)}`
+      );
       const data = await res.json();
-      console.log("Articles loaded:", data);
-      setList(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error("Error loading articles:", error);
-      setList([]);
+      const limited = Array.isArray(data) ? data.slice(0, limit) : [];
+      setArticles(limited);
+      console.log("✅ Fetched articles:", limited);
+    } catch (err) {
+      console.error("Error fetching articles:", err);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    load();
-  }, []); // eslint-disable-line
-
-  const filtered = list.filter(
-    (a) =>
-      a.Title?.toLowerCase().includes(search.toLowerCase()) ||
-      a.Category?.toLowerCase().includes(search.toLowerCase())
-  );
-
-  const remove = async (id) => {
-    if (!window.confirm("Delete this article?")) return;
+  // ✅ Fetch full article details
+  const fetchArticleDetail = async (id) => {
     try {
-      await fetch(`${API}/articles/${id}`, { method: "DELETE", headers });
-      setList((p) => p.filter((x) => x._id !== id));
-      alert("Article deleted successfully!");
-    } catch (error) {
-      console.error("Error deleting article:", error);
-      alert("Failed to delete article");
+      setLoading(true);
+      const res = await fetch(`${API_BASE}/articles/${id}`);
+      const data = await res.json();
+      setSelectedArticle(data);
+      setView("detail");
+    } catch (err) {
+      console.error("Error fetching article:", err);
+    } finally {
+      setLoading(false);
     }
   };
 
+  // ✅ Back buttons
+  const backToCategories = () => {
+    setSelectedCategory(null);
+    setArticles([]);
+    setView("main");
+  };
+
   return (
-    <section className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 p-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-12">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-5xl font-bold text-gray-900 mb-2">
-                Article Management
-              </h1>
-              <p className="text-gray-600 text-lg">
-                Manage health articles and medical content
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Search Bar */}
-        <div className="mb-8">
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <input
-              className="w-full pl-12 pr-6 py-4 rounded-xl bg-white border border-gray-200 text-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all shadow-sm"
-              placeholder="Search by title or category..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-        </div>
-
-        {/* Loading */}
-        {loading ? (
-          <div className="bg-white rounded-2xl shadow-lg py-20 text-center">
-            <div className="inline-block w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-            <p className="text-gray-600 text-lg">Loading articles...</p>
-          </div>
-        ) : filtered.length > 0 ? (
-          <div className="space-y-6">
-            {filtered.map((a) => (
-              <div
-                key={a._id}
-                className="bg-white rounded-2xl shadow-md hover:shadow-xl transition-all border border-gray-100 overflow-hidden"
-              >
-                <div className="flex flex-col md:flex-row gap-6 p-6">
-                  {/* Image */}
-                  <div className="w-full md:w-48 h-40 rounded-xl overflow-hidden bg-gradient-to-br from-blue-500 to-indigo-600 flex-shrink-0">
-                    {a.ImageURL ? (
-                      <img
-                        src={a.ImageURL}
-                        alt={a.Title}
-                        className="w-full h-full object-cover hover:scale-105 transition-transform"
-                        onError={(e) => (e.target.style.display = "none")}
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-white">
-                        <FileText className="w-16 h-16 opacity-50" />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Content */}
-                  <div className="flex-1 flex flex-col justify-between">
-                    <div className="mb-4">
-                      <div className="flex items-start justify-between gap-4 mb-3">
-                        <div className="flex-1">
-                          <h3 className="text-2xl font-bold text-gray-900 mb-3 line-clamp-2">
-                            {a.Title}
-                          </h3>
-                          <div className="flex items-center gap-3 mb-4">
-                            <span className="px-4 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-semibold">
-                              {a.Category}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                      <p className="text-gray-600 text-base line-clamp-2 mb-4">
-                        {a.ShortDescription}
-                      </p>
-                      <div className="flex items-center gap-2 text-sm text-gray-500">
-                        <span>By {a.createdBy || "Dr. Smith"}</span>
-                        <span>•</span>
-                        <span>
-                          {a.createdAt
-                            ? new Date(a.createdAt).toLocaleDateString()
-                            : "2024-01-10"}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex items-center gap-3 pt-4 border-t border-gray-100">
-                      <button
-                        onClick={() => setViewModal(a)} // ✅ open modal
-                        className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-all font-medium text-sm"
-                      >
-                        <Eye className="w-4 h-4" />
-                        View
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="bg-white rounded-2xl shadow-lg py-20 text-center border border-gray-100">
-            <FileText className="w-20 h-20 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500 text-lg font-medium">No articles found</p>
-            <p className="text-gray-400 text-sm mt-2">
-              Try adjusting your search or add a new article
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
+      {/* =============== HEADER SECTION =============== */}
+      <div
+        className={`text-white py-12 px-6 text-center ${
+          view === "main"
+            ? "bg-gradient-to-r from-blue-600 to-indigo-600"
+            : selectedCategory
+            ? `bg-gradient-to-r ${
+                categoryStyles[selectedCategory.name]?.color || "from-blue-600 to-indigo-600"
+              }`
+            : "bg-gradient-to-r from-blue-600 to-indigo-600"
+        }`}
+      >
+        {view === "main" && (
+          <>
+            <h1 className="text-5xl font-extrabold mb-3">
+              Health & Medicine Articles
+            </h1>
+            <p className="text-blue-100 text-lg max-w-2xl mx-auto">
+              Explore evidence-based articles across medical specialties written
+              by healthcare experts.
             </p>
-          </div>
+          </>
+        )}
+
+        {view === "category" && selectedCategory && (
+          <>
+            <h1 className="text-5xl font-extrabold mb-3">
+              {selectedCategory.name}
+            </h1>
+            <p className="text-blue-100 text-lg">{selectedCategory.desc}</p>
+          </>
         )}
       </div>
 
-      {/* ✅ VIEW MODAL */}
-      {viewModal && (
-        <div
-          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-          onClick={() => setViewModal(null)}
-        >
-          <div
-            className="bg-white rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="px-6 py-4 border-b flex items-center justify-between sticky top-0 bg-white z-10">
-              <h3 className="text-xl font-bold text-gray-900">
-                {viewModal.Title}
-              </h3>
-              <button
-                onClick={() => setViewModal(null)}
-                className="p-2 hover:bg-gray-100 rounded-lg"
-              >
-                <X className="w-5 h-5" />
-              </button>
+      <div className="max-w-7xl mx-auto px-6 py-12">
+        {/* =============== MAIN CATEGORY VIEW =============== */}
+        {view === "main" && (
+          <>
+            <h2 className="text-3xl font-bold text-gray-900 mb-8 text-center">
+              Browse by Category
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {categories.map((cat) => (
+                <div
+                  key={cat.name}
+                  onClick={() => {
+                    setSelectedCategory(cat);
+                    setView("category");
+                    fetchArticles(cat.name, 3);
+                  }}
+                  className="cursor-pointer bg-white rounded-2xl shadow-md hover:shadow-xl transition-all p-6 text-center hover:-translate-y-1"
+                >
+                  <div
+                    className={`w-14 h-14 rounded-xl mx-auto mb-4 flex items-center justify-center text-white text-xl font-bold ${
+                      categoryStyles[cat.name]?.iconBg || "bg-blue-600"
+                    }`}
+                  >
+                    {cat.name.charAt(0)}
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900 mb-1">
+                    {cat.name}
+                  </h3>
+                  <p className="text-gray-600 text-sm">{cat.desc}</p>
+                </div>
+              ))}
             </div>
+          </>
+        )}
 
-            {/* Content */}
-            <div className="p-6 space-y-4">
-              {viewModal.ImageURL && (
+        {/* =============== CATEGORY ARTICLES VIEW =============== */}
+        {view === "category" && (
+          <div>
+            <button
+              onClick={backToCategories}
+              className="flex items-center text-blue-600 hover:underline font-medium mb-6"
+            >
+              <ArrowLeft className="w-5 h-5 mr-2" /> Back to Categories
+            </button>
+
+            {loading ? (
+              <div className="text-center py-16">
+                <div className="inline-block w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+                <p className="text-gray-600">Loading articles...</p>
+              </div>
+            ) : articles.length === 0 ? (
+              <p className="text-center text-gray-500 text-lg py-12">
+                No articles found for this category.
+              </p>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                  {articles.map((a) => (
+                    <div
+                      key={a._id}
+                      className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all overflow-hidden"
+                    >
+                      {a.ImageURL && (
+                        <img
+                          src={a.ImageURL}
+                          alt={a.Title}
+                          className="w-full h-52 object-cover"
+                          onError={(e) => (e.target.style.display = "none")}
+                        />
+                      )}
+                      <div className="p-6">
+                        <h3 className="text-xl font-bold text-gray-900 mb-2 line-clamp-2">
+                          {a.Title}
+                        </h3>
+                        <p className="text-gray-600 mb-3 text-sm line-clamp-3">
+                          {a.ShortDescription}
+                        </p>
+                        <div className="flex items-center justify-between text-sm text-gray-500 mb-3">
+                          <span>
+                            By{" "}
+                            {a.createdBy
+                              ? a.createdBy.name || "Dr. Smith"
+                              : "Dr. Smith"}
+                          </span>
+                          <span>
+                            {new Date(a.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => fetchArticleDetail(a._id)}
+                          className="w-full bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 transition"
+                        >
+                          Read More
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {articles.length >= 3 && (
+                  <div className="text-center mt-10">
+                    <button
+                      onClick={() => fetchArticles(selectedCategory.name, 20)}
+                      className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-bold hover:opacity-90 transition"
+                    >
+                      View All Articles
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        {/* =============== ARTICLE DETAIL VIEW =============== */}
+        {view === "detail" && selectedArticle && (
+          <div>
+            <button
+              onClick={() => setView("category")}
+              className="flex items-center text-blue-600 hover:underline font-medium mb-6"
+            >
+              <ArrowLeft className="w-5 h-5 mr-2" /> Back to{" "}
+              {selectedCategory?.name || "Articles"}
+            </button>
+
+            <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+              {selectedArticle.ImageURL && (
                 <img
-                  src={viewModal.ImageURL}
-                  alt={viewModal.Title}
-                  className="w-full rounded-xl object-cover mb-4"
+                  src={selectedArticle.ImageURL}
+                  alt={selectedArticle.Title}
+                  className="w-full h-96 object-cover"
                 />
               )}
-              <div>
-                <span className="inline-block px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium mb-2">
-                  {viewModal.Category}
-                </span>
-                <p className="text-gray-600 text-sm mb-3">
-                  Published on{" "}
-                  {viewModal.createdAt
-                    ? new Date(viewModal.createdAt).toLocaleDateString()
-                    : "Unknown date"}
+              <div className="p-8">
+                <h1 className="text-4xl font-bold text-gray-900 mb-4">
+                  {selectedArticle.Title}
+                </h1>
+                <p className="text-gray-600 mb-4">
+                  {selectedArticle.ShortDescription}
                 </p>
-              </div>
-
-              <p className="text-gray-800 text-lg font-semibold">
-                {viewModal.ShortDescription}
-              </p>
-
-              <div className="border-t border-gray-200 my-4"></div>
-
-              <div className="prose max-w-none text-gray-700 whitespace-pre-line">
-                {viewModal.Content || "No content available."}
-              </div>
-
-              {viewModal.SourceLink && (
-                <div className="pt-4">
+                <div className="text-sm text-gray-500 mb-6">
+                  By{" "}
+                  {selectedArticle.createdBy
+                    ? selectedArticle.createdBy.name || "Dr. Smith"
+                    : "Dr. Smith"}{" "}
+                  • {new Date(selectedArticle.createdAt).toLocaleDateString()}
+                </div>
+                <div
+                  className="prose prose-blue max-w-none text-gray-700 leading-relaxed"
+                  dangerouslySetInnerHTML={{
+                    __html: selectedArticle.Content,
+                  }}
+                />
+                {selectedArticle.SourceLink && (
                   <a
-                    href={viewModal.SourceLink}
+                    href={selectedArticle.SourceLink}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline"
+                    className="inline-block mt-6 text-blue-600 font-semibold hover:underline"
                   >
-                    🔗 Read Original Source
+                    🔗 Source
                   </a>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
-    </section>
+        )}
+      </div>
+    </div>
   );
-}
+};
 
-export default AdminArticles;
+export default ArticlesPage;
