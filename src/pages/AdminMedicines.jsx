@@ -16,8 +16,14 @@ function AdminMedicines() {
   const [list, setList] = useState([]);
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(true);
+
+  // which medicine is being edited (full object)
   const [editModal, setEditModal] = useState(null);
-  const [addModal, setAddModal] = useState(false); // NEW modal state for Add Medicine
+
+  // add modal state
+  const [addModal, setAddModal] = useState(false);
+
+  // shared form state (used by both Add and Edit modals)
   const [formData, setFormData] = useState({
     title: "",
     imageUrl: "",
@@ -44,7 +50,8 @@ function AdminMedicines() {
 
   useEffect(() => {
     load();
-  }, []); // eslint-disable-line
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const filtered = list.filter(
     (m) =>
@@ -59,14 +66,14 @@ function AdminMedicines() {
       usage: medicine.usage || "",
       sideEffect: Array.isArray(medicine.sideEffect)
         ? medicine.sideEffect.join(", ")
-        : "",
+        : (medicine.sideEffect || ""),
       category: medicine.category || "",
-      tags: Array.isArray(medicine.tags) ? medicine.tags.join(", ") : "",
+      tags: Array.isArray(medicine.tags) ? medicine.tags.join(", ") : (medicine.tags || ""),
     });
     setEditModal(medicine);
   };
 
-  // ✅ Add new medicine
+  // Add new medicine
   const handleAdd = async (e) => {
     e.preventDefault();
     try {
@@ -112,7 +119,7 @@ function AdminMedicines() {
     }
   };
 
-  // ✅ Update existing medicine
+  // Update existing medicine
   const handleUpdate = async (e) => {
     e.preventDefault();
     try {
@@ -148,7 +155,7 @@ function AdminMedicines() {
     }
   };
 
-  // ✅ Delete medicine
+  // Delete medicine
   const remove = async (id) => {
     if (!window.confirm("Delete this medicine?")) return;
     try {
@@ -448,10 +455,141 @@ function AdminMedicines() {
         </div>
       )}
 
-      {/* Edit modal remains the same below this */}
+      {/* =================== Edit Modal (NEW) =================== */}
       {editModal && (
-        // keep your existing Edit modal code — unchanged
-        <></>
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+          onClick={() => setEditModal(null)}
+        >
+          <div
+            className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-6 py-4 border-b flex items-center justify-between sticky top-0 bg-white z-10">
+              <h3 className="text-xl font-bold text-gray-900">Edit Medicine</h3>
+              <button
+                onClick={() => setEditModal(null)}
+                className="p-2 hover:bg-gray-100 rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdate} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Title *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.title}
+                  onChange={(e) =>
+                    setFormData({ ...formData, title: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Category *
+                </label>
+                <select
+                  required
+                  value={formData.category}
+                  onChange={(e) =>
+                    setFormData({ ...formData, category: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                >
+                  <option value="">Select Category</option>
+                  {categories.map((cat) => (
+                    <option key={cat} value={cat}>
+                      {cat}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Image URL
+                </label>
+                <input
+                  type="url"
+                  value={formData.imageUrl}
+                  onChange={(e) =>
+                    setFormData({ ...formData, imageUrl: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  placeholder="https://example.com/image.jpg"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Usage *
+                </label>
+                <textarea
+                  required
+                  rows={3}
+                  value={formData.usage}
+                  onChange={(e) =>
+                    setFormData({ ...formData, usage: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Side Effects (comma-separated)
+                </label>
+                <textarea
+                  rows={3}
+                  value={formData.sideEffect}
+                  onChange={(e) =>
+                    setFormData({ ...formData, sideEffect: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  placeholder="Nausea, Headache, Dizziness"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Tags (comma-separated)
+                </label>
+                <input
+                  type="text"
+                  value={formData.tags}
+                  onChange={(e) =>
+                    setFormData({ ...formData, tags: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  placeholder="prescription, over-the-counter, analgesic"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="submit"
+                  className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+                >
+                  Save Changes
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditModal(null)}
+                  className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </section>
   );
