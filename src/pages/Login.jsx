@@ -10,9 +10,11 @@ export const LoginPage = ({ onSwitchToSignup, onLoginSuccess }) => {
   const [password, setPassword] = useState("");
   const [otp, setOtp] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [step, setStep] = useState("login");
+  const [step, setStep] = useState("login"); // login | otp | forgot | reset
   const [message, setMessage] = useState({ text: "", type: "" });
   const [loading, setLoading] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   // ✅ Step 1: Login with email/password
   const handleLogin = async (e) => {
@@ -81,17 +83,68 @@ export const LoginPage = ({ onSwitchToSignup, onLoginSuccess }) => {
     }
   };
 
-  // ✅ Google Sign-In → OTP flow
+  // ✅ Step 3: Forgot Password (send OTP)
+  const handleForgotPassword = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setMessage({ text: "", type: "" });
+    try {
+      const res = await fetch(`${API_BASE}/forgot-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setStep("reset");
+        setMessage({ text: data.message || "OTP sent to your email.", type: "success" });
+      } else {
+        setMessage({ text: data.error || "Failed to send OTP.", type: "error" });
+      }
+    } catch {
+      setMessage({ text: "Network error, please try again.", type: "error" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ✅ Step 4: Reset Password
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    if (newPassword !== confirmPassword)
+      return setMessage({ text: "Passwords do not match.", type: "error" });
+
+    setLoading(true);
+    setMessage({ text: "", type: "" });
+
+    try {
+      const res = await fetch(`${API_BASE}/reset-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, otp, newPassword }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setMessage({ text: data.message || "Password reset successful!", type: "success" });
+        setTimeout(() => setStep("login"), 1000);
+      } else {
+        setMessage({ text: data.error || "Reset failed", type: "error" });
+      }
+    } catch {
+      setMessage({ text: "Network error, please try again.", type: "error" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ✅ Google Login
   const googleLogin = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
       try {
-        // Fetch profile from Google
         const res = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
           headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
         });
         const profile = await res.json();
-
-        // Send to backend to send OTP
         const otpRes = await fetch(`${API_BASE}/google`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -114,7 +167,8 @@ export const LoginPage = ({ onSwitchToSignup, onLoginSuccess }) => {
         setMessage({ text: "Google login failed. Try again.", type: "error" });
       }
     },
-    onError: () => setMessage({ text: "Google login cancelled or failed.", type: "error" }),
+    onError: () =>
+      setMessage({ text: "Google login cancelled or failed.", type: "error" }),
   });
 
   return (
@@ -123,33 +177,39 @@ export const LoginPage = ({ onSwitchToSignup, onLoginSuccess }) => {
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-8 py-6 text-center">
           <h1 className="text-3xl font-bold text-white mb-2">Welcome Back</h1>
-          <p className="text-blue-100">Sign in to your healthcare portal</p>
+          <p className="text-blue-100">
+            {step === "forgot" || step === "reset"
+              ? "Reset your password"
+              : "Sign in to your healthcare portal"}
+          </p>
         </div>
 
         <div className="p-8">
           {/* Role switch */}
-          <div className="flex gap-2 mb-8 bg-gray-100 p-1 rounded-xl">
-            <button
-              onClick={() => setIsAdmin(false)}
-              className={`flex-1 py-3 rounded-lg font-semibold ${
-                !isAdmin
-                  ? "bg-blue-600 text-white shadow-md"
-                  : "text-gray-600 hover:text-gray-900"
-              }`}
-            >
-              User Login
-            </button>
-            <button
-              onClick={() => setIsAdmin(true)}
-              className={`flex-1 py-3 rounded-lg font-semibold ${
-                isAdmin
-                  ? "bg-blue-600 text-white shadow-md"
-                  : "text-gray-600 hover:text-gray-900"
-              }`}
-            >
-              Admin Login
-            </button>
-          </div>
+          {step === "login" && (
+            <div className="flex gap-2 mb-8 bg-gray-100 p-1 rounded-xl">
+              <button
+                onClick={() => setIsAdmin(false)}
+                className={`flex-1 py-3 rounded-lg font-semibold ${
+                  !isAdmin
+                    ? "bg-blue-600 text-white shadow-md"
+                    : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                User Login
+              </button>
+              <button
+                onClick={() => setIsAdmin(true)}
+                className={`flex-1 py-3 rounded-lg font-semibold ${
+                  isAdmin
+                    ? "bg-blue-600 text-white shadow-md"
+                    : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                Admin Login
+              </button>
+            </div>
+          )}
 
           {/* STEP: Login form */}
           {step === "login" && (
@@ -195,6 +255,16 @@ export const LoginPage = ({ onSwitchToSignup, onLoginSuccess }) => {
                 </div>
               </div>
 
+              <div className="text-right">
+                <button
+                  type="button"
+                  onClick={() => setStep("forgot")}
+                  className="text-sm text-blue-600 hover:underline font-medium"
+                >
+                  Forgot Password?
+                </button>
+              </div>
+
               <button
                 type="submit"
                 disabled={loading}
@@ -202,44 +272,84 @@ export const LoginPage = ({ onSwitchToSignup, onLoginSuccess }) => {
               >
                 {loading ? "Sending OTP..." : "Sign In"}
               </button>
+            </form>
+          )}
 
-              {/* Divider + Google */}
-              {!isAdmin && (
-                <>
-                  <div className="relative my-6">
-                    <div className="absolute inset-0 flex items-center">
-                      <div className="w-full border-t border-gray-300"></div>
-                    </div>
-                    <div className="relative flex justify-center text-sm">
-                      <span className="px-4 bg-white text-gray-500">OR</span>
-                    </div>
-                  </div>
+          {/* STEP: Forgot password (email only) */}
+          {step === "forgot" && (
+            <form onSubmit={handleForgotPassword} className="space-y-5">
+              <p className="text-gray-600 text-center">
+                Enter your registered email to get reset code
+              </p>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                placeholder="you@example.com"
+                className="w-full py-3 px-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500"
+              />
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-blue-600 text-white py-3 rounded-xl font-semibold hover:bg-blue-700 transition disabled:opacity-50"
+              >
+                {loading ? "Sending OTP..." : "Send OTP"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setStep("login")}
+                className="w-full text-gray-600 hover:text-gray-900 font-medium"
+              >
+                ← Back to Login
+              </button>
+            </form>
+          )}
 
-                  <button
-                    type="button"
-                    onClick={() => googleLogin()}
-                    className="w-full flex items-center justify-center gap-3 border-2 border-gray-300 rounded-xl py-3 hover:bg-gray-50 transition font-medium"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="20" height="20">
-                      <path fill="#EA4335" d="M24 9.5c3.54 0 6.7 1.22 9.18 3.6l6.84-6.84C35.94 2.7 30.36 0 24 0 14.62 0 6.53 5.38 2.56 13.22l7.98 6.22C12.13 13.33 17.56 9.5 24 9.5z" />
-                      <path fill="#34A853" d="M46.5 24.5c0-1.5-.13-2.94-.38-4.34H24v8.21h12.65c-.55 2.96-2.21 5.48-4.71 7.17l7.3 5.66C43.63 37.01 46.5 31.3 46.5 24.5z" />
-                      <path fill="#FBBC05" d="M10.54 28.56A13.48 13.48 0 0 1 9.5 24c0-1.57.28-3.07.78-4.46l-7.98-6.22A23.891 23.891 0 0 0 0 24c0 3.88.93 7.55 2.56 10.68l7.98-6.12z" />
-                      <path fill="#4285F4" d="M24 48c6.36 0 11.7-2.09 15.6-5.7l-7.3-5.66c-2.03 1.36-4.63 2.16-8.3 2.16-6.44 0-11.87-3.83-14.46-9.22l-7.98 6.12C6.53 42.62 14.62 48 24 48z" />
-                    </svg>
-                    Sign in with Google
-                  </button>
-
-                  <div className="text-sm text-gray-600 text-center mt-4">
-                    Don’t have an account?{" "}
-                    <button
-                      onClick={onSwitchToSignup}
-                      className="text-blue-600 font-semibold hover:text-blue-700"
-                    >
-                      Create one here
-                    </button>
-                  </div>
-                </>
-              )}
+          {/* STEP: Reset password */}
+          {step === "reset" && (
+            <form onSubmit={handleResetPassword} className="space-y-5">
+              <p className="text-center text-gray-600">
+                Enter the OTP sent to <span className="text-blue-600">{email}</span>
+              </p>
+              <input
+                type="text"
+                value={otp}
+                onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                placeholder="6-digit OTP"
+                className="w-full text-center py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500"
+                required
+              />
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="New password"
+                className="w-full py-3 px-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500"
+                required
+              />
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm password"
+                className="w-full py-3 px-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500"
+                required
+              />
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-blue-600 text-white py-3 rounded-xl font-semibold hover:bg-blue-700 transition disabled:opacity-50"
+              >
+                {loading ? "Resetting..." : "Reset Password"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setStep("login")}
+                className="w-full text-gray-600 hover:text-gray-900 font-medium"
+              >
+                ← Back to Login
+              </button>
             </form>
           )}
 
