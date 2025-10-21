@@ -16,7 +16,7 @@ function AdminTickets() {
   const [focus, setFocus] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // new state for reply modal
+  // State for reply modal
   const [replying, setReplying] = useState(null);
   const [replyText, setReplyText] = useState("");
 
@@ -24,11 +24,28 @@ function AdminTickets() {
     try {
       setLoading(true);
       const res = await fetch(`${API}/support`, { headers });
+      
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+      
       const data = await res.json();
       console.log("Tickets loaded:", data);
-      setList(Array.isArray(data) ? data : []);
+      
+      // Ensure we have an array
+      const tickets = Array.isArray(data) ? data : [];
+      
+      // Log any tickets with missing userId
+      tickets.forEach((ticket, index) => {
+        if (!ticket.userId) {
+          console.warn(`Ticket at index ${index} (ID: ${ticket._id}) has no userId:`, ticket);
+        }
+      });
+      
+      setList(tickets);
     } catch (error) {
       console.error("Error loading tickets:", error);
+      setMessage("❌ Failed to load tickets: " + error.message);
       setList([]);
     } finally {
       setLoading(false);
@@ -42,17 +59,29 @@ function AdminTickets() {
   const filtered = list.filter(
     (t) =>
       t.subject?.toLowerCase().includes(search.toLowerCase()) ||
-      t.userId?.email?.toLowerCase().includes(search.toLowerCase())
+      t.userId?.email?.toLowerCase().includes(search.toLowerCase()) ||
+      t.userId?.firstName?.toLowerCase().includes(search.toLowerCase()) ||
+      t.userId?.lastName?.toLowerCase().includes(search.toLowerCase())
   );
 
   const resolve = async (id) => {
-    if (!replyText.trim()) return alert("Please enter a reply message.");
+    if (!replyText.trim()) {
+      alert("Please enter a reply message.");
+      return;
+    }
+    
     try {
-      await fetch(`${API}/support/${id}`, {
+      const res = await fetch(`${API}/support/${id}`, {
         method: "PUT",
         headers,
         body: JSON.stringify({ customMessage: replyText }),
       });
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to resolve ticket");
+      }
+      
       setMessage("✅ Ticket resolved and reply sent successfully.");
       setReplying(null);
       setReplyText("");
@@ -60,7 +89,7 @@ function AdminTickets() {
       load();
     } catch (error) {
       console.error("Error resolving ticket:", error);
-      alert("Failed to resolve ticket");
+      alert("Failed to resolve ticket: " + error.message);
     }
   };
 
@@ -72,6 +101,18 @@ function AdminTickets() {
     Low: "bg-green-100 text-green-700",
   };
 
+  const getUserDisplay = (ticket) => {
+    if (!ticket.userId) return "No User Data";
+    
+    const { firstName, lastName, email } = ticket.userId;
+    
+    if (firstName || lastName) {
+      return `${firstName || ""} ${lastName || ""}`.trim();
+    }
+    
+    return email || "Unknown User";
+  };
+
   return (
     <section>
       <div className="mb-8">
@@ -80,7 +121,11 @@ function AdminTickets() {
       </div>
 
       {message && (
-        <div className="mb-4 rounded-xl bg-green-50 border border-green-200 text-green-700 px-4 py-3">
+        <div className={`mb-4 rounded-xl border px-4 py-3 ${
+          message.startsWith("✅") 
+            ? "bg-green-50 border-green-200 text-green-700"
+            : "bg-red-50 border-red-200 text-red-700"
+        }`}>
           {message}
         </div>
       )}
@@ -89,7 +134,7 @@ function AdminTickets() {
         <Search className="w-5 h-5 text-gray-400" />
         <input
           className="outline-none flex-1 text-lg"
-          placeholder="Search tickets..."
+          placeholder="Search tickets by subject, email, or name..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -117,9 +162,9 @@ function AdminTickets() {
             <tbody className="divide-y">
               {filtered.map((t) => (
                 <tr key={t._id} className="hover:bg-gray-50">
-                  <td className="px-4 py-4 font-medium text-sm">U{t._id.slice(0, 3)}</td>
+                  <td className="px-4 py-4 font-medium text-sm">#{t._id.slice(-6)}</td>
                   <td className="px-4 py-4 text-gray-600 text-sm truncate" title={t.userId?.email}>
-                    {t.userId?.email || "alice@example.com"}
+                    {t.userId?.email || "N/A"}
                   </td>
                   <td className="px-4 py-4 text-gray-900 text-sm truncate" title={t.subject}>
                     {t.subject}
@@ -130,7 +175,7 @@ function AdminTickets() {
                         priorityColors[t.Priority] || "bg-gray-100 text-gray-700"
                       }`}
                     >
-                      {t.Priority}
+                      {t.Priority || "Medium"}
                     </span>
                   </td>
                   <td className="px-4 py-4">
@@ -145,14 +190,14 @@ function AdminTickets() {
                     </span>
                   </td>
                   <td className="px-4 py-4 text-gray-600 text-sm">
-                    {t.createdAt ? new Date(t.createdAt).toLocaleDateString("en-GB") : "13/10/2025"}
+                    {t.createdAt ? new Date(t.createdAt).toLocaleDateString("en-GB") : "N/A"}
                   </td>
                   <td className="px-4 py-4">
                     <div className="flex justify-center gap-1">
                       <button
                         onClick={() => setFocus(t)}
                         className="px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded text-xs flex items-center gap-1"
-                        title="View"
+                        title="View Details"
                       >
                         <Eye className="w-3 h-3" /> View
                       </button>
@@ -160,17 +205,24 @@ function AdminTickets() {
                       {t.status !== "resolved" && (
                         <button
                           className="px-2 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700 flex items-center gap-1"
-                          onClick={() => setReplying(t)}
-                          title="Resolve"
+                          onClick={() => {
+                            setReplying(t);
+                            setReplyText("");
+                          }}
+                          title="Resolve Ticket"
                         >
-                          <CheckCircle2 className="w-3 h-3" />
+                          <CheckCircle2 className="w-3 h-3" /> Resolve
                         </button>
                       )}
 
                       <button
                         className="p-1 hover:bg-red-50 rounded text-red-600"
-                        onClick={() => removeLocal(t._id)}
-                        title="Remove"
+                        onClick={() => {
+                          if (window.confirm("Remove this ticket from the list? (This only removes it locally)")) {
+                            removeLocal(t._id);
+                          }
+                        }}
+                        title="Remove from list"
                       >
                         <Trash2 className="w-3 h-3" />
                       </button>
@@ -182,7 +234,9 @@ function AdminTickets() {
           </table>
 
           {!filtered.length && (
-            <div className="px-6 py-10 text-center text-gray-500">No tickets found.</div>
+            <div className="px-6 py-10 text-center text-gray-500">
+              {list.length === 0 ? "No tickets found." : "No tickets match your search."}
+            </div>
           )}
         </div>
       )}
@@ -194,10 +248,10 @@ function AdminTickets() {
           onClick={() => setFocus(null)}
         >
           <div
-            className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl"
+            className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="px-6 py-4 border-b flex items-center justify-between">
+            <div className="px-6 py-4 border-b flex items-center justify-between sticky top-0 bg-white">
               <h3 className="text-xl font-bold text-gray-900">Ticket Details</h3>
               <button onClick={() => setFocus(null)} className="p-2 hover:bg-gray-100 rounded-lg">
                 <X className="w-5 h-5" />
@@ -205,11 +259,13 @@ function AdminTickets() {
             </div>
             <div className="p-6 space-y-4">
               <div className="grid grid-cols-3 gap-4">
+                <div className="text-gray-600 font-medium">Ticket ID</div>
+                <div className="col-span-2 text-gray-900 font-mono">#{focus._id}</div>
+              </div>
+              <div className="grid grid-cols-3 gap-4">
                 <div className="text-gray-600 font-medium">User</div>
                 <div className="col-span-2 text-gray-900">
-                  {focus.userId
-                    ? `${focus.userId.firstName || ""} ${focus.userId.lastName || ""}`
-                    : "N/A"}
+                  {getUserDisplay(focus)}
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-4">
@@ -221,10 +277,10 @@ function AdminTickets() {
                 <div className="col-span-2">
                   <span
                     className={`px-3 py-1 rounded-full text-sm font-medium ${
-                      priorityColors[focus.Priority]
+                      priorityColors[focus.Priority] || "bg-gray-100 text-gray-700"
                     }`}
                   >
-                    {focus.Priority}
+                    {focus.Priority || "Medium"}
                   </span>
                 </div>
               </div>
@@ -238,17 +294,31 @@ function AdminTickets() {
                         : "bg-blue-100 text-blue-700"
                     }`}
                   >
-                    {focus.status}
+                    {focus.status || "open"}
                   </span>
                 </div>
               </div>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="text-gray-600 font-medium">Created</div>
+                <div className="col-span-2 text-gray-900">
+                  {focus.createdAt ? new Date(focus.createdAt).toLocaleString("en-GB") : "N/A"}
+                </div>
+              </div>
+              {focus.resolvedAt && (
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="text-gray-600 font-medium">Resolved</div>
+                  <div className="col-span-2 text-gray-900">
+                    {new Date(focus.resolvedAt).toLocaleString("en-GB")}
+                  </div>
+                </div>
+              )}
               <div className="grid grid-cols-3 gap-4">
                 <div className="text-gray-600 font-medium">Subject</div>
                 <div className="col-span-2 text-gray-900 font-semibold">{focus.subject}</div>
               </div>
               <div className="grid grid-cols-3 gap-4">
                 <div className="text-gray-600 font-medium">Description</div>
-                <div className="col-span-2 text-gray-900">{focus.description}</div>
+                <div className="col-span-2 text-gray-900 whitespace-pre-wrap">{focus.description}</div>
               </div>
             </div>
           </div>
@@ -265,19 +335,25 @@ function AdminTickets() {
             className="bg-white rounded-2xl w-full max-w-md shadow-2xl p-6"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-xl font-bold text-gray-900 mb-3">Reply to Ticket</h3>
+            <h3 className="text-xl font-bold text-gray-900 mb-3">Reply & Resolve Ticket</h3>
+            <p className="text-gray-600 text-sm mb-2">
+              <span className="font-medium">User:</span> {getUserDisplay(replying)}
+            </p>
             <p className="text-gray-600 text-sm mb-4">
-              Ticket: <span className="font-medium">{replying.subject}</span>
+              <span className="font-medium">Subject:</span> {replying.subject}
             </p>
             <textarea
-              className="w-full border rounded-xl p-3 text-gray-800 focus:ring-2 focus:ring-blue-500 outline-none min-h-[100px]"
-              placeholder="Type your reply message here..."
+              className="w-full border rounded-xl p-3 text-gray-800 focus:ring-2 focus:ring-blue-500 outline-none min-h-[120px]"
+              placeholder="Type your reply message here... This will be sent to the user's email."
               value={replyText}
               onChange={(e) => setReplyText(e.target.value)}
             />
             <div className="flex justify-end gap-3 mt-4">
               <button
-                onClick={() => setReplying(null)}
+                onClick={() => {
+                  setReplying(null);
+                  setReplyText("");
+                }}
                 className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700"
               >
                 Cancel
@@ -285,8 +361,9 @@ function AdminTickets() {
               <button
                 onClick={() => resolve(replying._id)}
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2"
+                disabled={!replyText.trim()}
               >
-                <Send className="w-4 h-4" /> Send Reply
+                <Send className="w-4 h-4" /> Send Reply & Resolve
               </button>
             </div>
           </div>
